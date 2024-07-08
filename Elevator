@@ -1,0 +1,93 @@
+`timescale 1ns / 1ps
+
+module Elevator_architecture(clk,rst,mfloor,overload,trigger,emergency,open_door,up,down);
+input clk,rst;
+input mfloor; //move to particular floor
+input trigger,overload,emergency; //trigger the door to open(1) & close(0), weight_overload, emergency stop
+output reg open_door,up,down;
+integer cfloor,nfloor;//cfloor=current floor, nfloor=next floor
+reg [1:0] state;
+parameter INIT=2'b00,UP=2'b01,DOWN=2'b10,STOP=2'b11;
+
+always @(posedge clk)
+begin
+    if (rst)
+    begin
+        cfloor<=1'd0;
+        nfloor<=mfloor;
+    end
+    else
+    begin
+        cfloor<=nfloor;
+        nfloor<=mfloor;
+    end
+    state<=INIT;
+end
+
+always @(*)
+begin
+    case(state)
+    INIT:
+    begin
+        up<=1'b0;
+        down<=1'b0;
+        open_door<=1'b0;
+        if (cfloor==nfloor)
+            state<=STOP;
+        else if (cfloor>nfloor)
+            state<=DOWN;
+        else if (cfloor<nfloor)
+            state<=UP;
+        else
+            state<=INIT;
+    end
+    UP:
+    begin
+        up<=1'b1;
+        if (cfloor==nfloor || emergency)
+            begin
+            up<=1'b0;
+            state<=STOP;
+            end
+        else
+            begin
+            cfloor<=cfloor+1;
+            state<=UP;
+            end
+    end
+    DOWN:
+    begin
+        down<=1'b1;
+        if (cfloor==nfloor || emergency)
+            begin
+            down<=1'b0;
+            state<=STOP;
+            end
+        else
+            begin
+            cfloor<=cfloor-1;
+            state<=DOWN;
+            end
+    end
+    STOP:
+    begin
+        open_door<=1'b1;
+        if (overload || trigger)
+            begin
+            cfloor<=cfloor;
+            state<=STOP;
+            end
+        else
+            begin
+            open_door<=1'b0;
+            state<=INIT;
+            end
+    end
+    default:
+    begin
+        state<=INIT;
+    end
+    endcase
+end
+
+endmodule
